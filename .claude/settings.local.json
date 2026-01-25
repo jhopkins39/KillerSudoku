@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npm install)",
+      "Bash(brew:*)",
+      "Bash(/usr/local/opt/node@22/bin/node:*)",
+      "Bash(/usr/local/opt/node@22/bin/npm --version)",
+      "Bash(PATH=\"/usr/local/opt/node@22/bin:$PATH\" npm run dev:*)",
+      "Bash(perl -e:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}

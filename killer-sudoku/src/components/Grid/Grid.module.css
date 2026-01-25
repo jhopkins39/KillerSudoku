@@ -1,0 +1,15 @@
+.grid {
+  display: flex;
+  flex-direction: column;
+  background: #333;
+  padding: 2px;
+  border-radius: 4px;
+  width: 100%;
+  max-width: 450px;
+  aspect-ratio: 1;
+}
+
+.row {
+  display: flex;
+  flex: 1;
+}
