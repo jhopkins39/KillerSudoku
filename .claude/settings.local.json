@@ -11,7 +11,14 @@
       "Bash(/usr/local/opt/node@22/bin/npm --version)",
       "Bash(PATH=\"/usr/local/opt/node@22/bin:$PATH\" npm run dev:*)",
       "Bash(perl -e:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(PATH=\"/usr/local/opt/node@22/bin:$PATH\" npm install:*)",
+      "Bash(PATH=\"/usr/local/opt/node@22/bin:$PATH\" node:*)",
+      "Bash(PATH=\"/usr/local/opt/node@22/bin:$PATH\" npm run build:*)",
+      "Bash(PATH=\"/usr/local/opt/node@22/bin:$PATH\" npx vercel:*)",
+      "Bash(PATH=\"/usr/local/opt/node@22/bin:$PATH\" npx netlify-cli:*)",
+      "Bash(PATH=\"/usr/local/opt/node@22/bin:$PATH\" npx surge:*)",
+      "Bash(PATH=\"/usr/local/opt/node@22/bin:$PATH\" npx vercel login:*)"
     ]
   }
 }
