@@ -1,6 +1,6 @@
 .numberPad {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 8px;
   max-width: 450px;
   margin: 0 auto;
@@ -40,6 +40,30 @@
 
 .clearButton:active {
   background: #ef9a9a;
+}
+
+.notesButton {
+  background: #e3f2fd;
+  color: #1976d2;
+  border-color: #bbdefb;
+}
+
+.notesButton:hover {
+  background: #bbdefb;
+}
+
+.notesActive {
+  background: #1976d2;
+  color: white;
+  border-color: #1565c0;
+}
+
+.notesActive:hover {
+  background: #1565c0;
+}
+
+.notesActive:active {
+  background: #0d47a1;
 }
 
 @media (max-width: 400px) {

@@ -10,9 +10,16 @@ function createEmptyGrid(): (number | null)[][] {
   return Array(9).fill(null).map(() => Array(9).fill(null));
 }
 
+// Initialize empty 9x9 notes grid
+function createEmptyNotes(): Set<number>[][] {
+  return Array(9).fill(null).map(() => Array(9).fill(null).map(() => new Set<number>()));
+}
+
 export default function App() {
   const [grid, setGrid] = useState<(number | null)[][]>(createEmptyGrid);
+  const [notes, setNotes] = useState<Set<number>[][]>(createEmptyNotes);
   const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
+  const [notesMode, setNotesMode] = useState(false);
   const [solved, setSolved] = useState(false);
 
   // Compute all conflicts
@@ -32,30 +39,70 @@ export default function App() {
     if (selectedCell === null) return;
 
     const [row, col] = selectedCell;
-    setGrid(prev => {
-      const newGrid = prev.map(r => [...r]);
-      newGrid[row][col] = num;
-      return newGrid;
-    });
-  }, [selectedCell]);
+
+    if (notesMode) {
+      // Notes mode: toggle the number in notes
+      if (num === null) {
+        // Clear all notes for this cell
+        setNotes(prev => {
+          const newNotes = prev.map(r => r.map(s => new Set(s)));
+          newNotes[row][col] = new Set();
+          return newNotes;
+        });
+      } else {
+        setNotes(prev => {
+          const newNotes = prev.map(r => r.map(s => new Set(s)));
+          const cellNotes = newNotes[row][col];
+          if (cellNotes.has(num)) {
+            cellNotes.delete(num);
+          } else {
+            cellNotes.add(num);
+          }
+          return newNotes;
+        });
+      }
+    } else {
+      // Normal mode: set the value and clear notes
+      setGrid(prev => {
+        const newGrid = prev.map(r => [...r]);
+        newGrid[row][col] = num;
+        return newGrid;
+      });
+      // Clear notes when entering a value
+      if (num !== null) {
+        setNotes(prev => {
+          const newNotes = prev.map(r => r.map(s => new Set(s)));
+          newNotes[row][col] = new Set();
+          return newNotes;
+        });
+      }
+    }
+  }, [selectedCell, notesMode]);
 
   // Keyboard input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+
+      // Toggle notes mode with 'n'
+      if (key === 'n') {
+        setNotesMode(prev => !prev);
+        return;
+      }
+
       if (selectedCell === null) return;
 
-      const key = e.key;
-      if (key >= '1' && key <= '9') {
-        handleNumberInput(parseInt(key));
-      } else if (key === 'Backspace' || key === 'Delete' || key === '0') {
+      if (e.key >= '1' && e.key <= '9') {
+        handleNumberInput(parseInt(e.key));
+      } else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') {
         handleNumberInput(null);
-      } else if (key === 'ArrowUp' && selectedCell[0] > 0) {
+      } else if (e.key === 'ArrowUp' && selectedCell[0] > 0) {
         setSelectedCell([selectedCell[0] - 1, selectedCell[1]]);
-      } else if (key === 'ArrowDown' && selectedCell[0] < 8) {
+      } else if (e.key === 'ArrowDown' && selectedCell[0] < 8) {
         setSelectedCell([selectedCell[0] + 1, selectedCell[1]]);
-      } else if (key === 'ArrowLeft' && selectedCell[1] > 0) {
+      } else if (e.key === 'ArrowLeft' && selectedCell[1] > 0) {
         setSelectedCell([selectedCell[0], selectedCell[1] - 1]);
-      } else if (key === 'ArrowRight' && selectedCell[1] < 8) {
+      } else if (e.key === 'ArrowRight' && selectedCell[1] < 8) {
         setSelectedCell([selectedCell[0], selectedCell[1] + 1]);
       }
     };
@@ -80,6 +127,7 @@ export default function App() {
       <main className={styles.main}>
         <Grid
           grid={grid}
+          notes={notes}
           puzzle={samplePuzzle}
           selectedCell={selectedCell}
           conflicts={conflicts}
@@ -88,7 +136,11 @@ export default function App() {
       </main>
 
       <footer className={styles.footer}>
-        <NumberPad onNumberClick={handleNumberInput} />
+        <NumberPad
+          onNumberClick={handleNumberInput}
+          notesMode={notesMode}
+          onToggleNotesMode={() => setNotesMode(prev => !prev)}
+        />
       </footer>
 
       {solved && (
@@ -98,6 +150,7 @@ export default function App() {
             <p>You solved the puzzle!</p>
             <button onClick={() => {
               setGrid(createEmptyGrid());
+              setNotes(createEmptyNotes());
               setSolved(false);
               setSelectedCell(null);
             }}>

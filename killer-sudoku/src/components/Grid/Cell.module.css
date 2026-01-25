@@ -30,21 +30,53 @@
   background: #ef9a9a !important;
 }
 
-/* Cage borders (dotted) */
-.cageTop {
-  border-top: 2px dashed #666;
+/* Cage border container - extends to cell edges by default */
+.cageBorder {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  bottom: -1px;
+  left: -1px;
+  pointer-events: none;
+  z-index: 10;
 }
 
-.cageRight {
-  border-right: 2px dashed #666;
+/* Cage borders (dotted, light blue) - pull inset where there's a border */
+.cageTop .cageBorder {
+  border-top: 2px dashed #64b5f6;
+  top: 2px;
 }
 
-.cageBottom {
-  border-bottom: 2px dashed #666;
+.cageRight .cageBorder {
+  border-right: 2px dashed #64b5f6;
+  right: 2px;
 }
 
-.cageLeft {
-  border-left: 2px dashed #666;
+.cageBottom .cageBorder {
+  border-bottom: 2px dashed #64b5f6;
+  bottom: 2px;
+}
+
+.cageLeft .cageBorder {
+  border-left: 2px dashed #64b5f6;
+  left: 2px;
+}
+
+/* Only round corners when BOTH adjacent sides have cage borders (for L-shaped cages) */
+.cageTop.cageLeft .cageBorder {
+  border-top-left-radius: 2px;
+}
+
+.cageTop.cageRight .cageBorder {
+  border-top-right-radius: 2px;
+}
+
+.cageBottom.cageLeft .cageBorder {
+  border-bottom-left-radius: 2px;
+}
+
+.cageBottom.cageRight .cageBorder {
+  border-bottom-right-radius: 2px;
 }
 
 /* 3x3 box borders (thick solid) */
@@ -56,15 +88,16 @@
   border-left: 2px solid #333;
 }
 
-/* Cage sum label */
+/* Cage sum label - positioned inside the cage border */
 .cageSum {
   position: absolute;
-  top: 2px;
-  left: 3px;
-  font-size: 10px;
-  font-weight: 500;
-  color: #666;
+  top: 5px;
+  left: 5px;
+  font-size: 9px;
+  font-weight: 600;
+  color: #42a5f5;
   line-height: 1;
+  z-index: 11;
 }
 
 /* Cell value */
@@ -74,9 +107,35 @@
   color: #1a237e;
 }
 
+/* Notes (pencil marks) - 3x3 grid */
+.notes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 100%;
+  height: 100%;
+  padding: 5px;
+  padding-top: 13px;
+  padding-left: 9px;
+  box-sizing: border-box;
+}
+
+.note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(7px, 2vw, 9px);
+  color: #666;
+  line-height: 1;
+}
+
 /* Responsive adjustments */
 @media (max-width: 400px) {
   .cageSum {
     font-size: 8px;
+  }
+
+  .note {
+    font-size: 7px;
   }
 }

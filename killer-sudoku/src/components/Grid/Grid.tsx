@@ -6,13 +6,14 @@ import styles from './Grid.module.css';
 
 interface GridProps {
   grid: (number | null)[][];
+  notes: Set<number>[][];
   puzzle: Puzzle;
   selectedCell: [number, number] | null;
   conflicts: Set<string>;
   onCellClick: (row: number, col: number) => void;
 }
 
-export default function Grid({ grid, puzzle, selectedCell, conflicts, onCellClick }: GridProps) {
+export default function Grid({ grid, notes, puzzle, selectedCell, conflicts, onCellClick }: GridProps) {
   const cageMap = useMemo(() => buildCageMap(puzzle), [puzzle]);
 
   return (
@@ -31,6 +32,7 @@ export default function Grid({ grid, puzzle, selectedCell, conflicts, onCellClic
                 row={row}
                 col={col}
                 value={grid[row][col]}
+                notes={notes[row][col]}
                 isSelected={isSelected}
                 hasConflict={hasConflict}
                 cageBorders={cageBorders}

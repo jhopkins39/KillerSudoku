@@ -5,6 +5,7 @@ interface CellProps {
   row: number;
   col: number;
   value: number | null;
+  notes: Set<number>;
   isSelected: boolean;
   hasConflict: boolean;
   cageBorders: CellBorders;
@@ -16,6 +17,7 @@ export default function Cell({
   row,
   col,
   value,
+  notes,
   isSelected,
   hasConflict,
   cageBorders,
@@ -40,12 +42,21 @@ export default function Cell({
 
   return (
     <div className={classNames.join(' ')} onClick={onClick}>
+      <div className={styles.cageBorder} />
       {cageSum !== null && (
         <span className={styles.cageSum}>{cageSum}</span>
       )}
-      {value !== null && (
+      {value !== null ? (
         <span className={styles.value}>{value}</span>
-      )}
+      ) : notes.size > 0 ? (
+        <div className={styles.notes}>
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+            <span key={n} className={styles.note}>
+              {notes.has(n) ? n : ''}
+            </span>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
