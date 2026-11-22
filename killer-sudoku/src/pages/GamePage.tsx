@@ -1,211 +1,178 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Grid from '../components/Grid/Grid';
 import NumberPad from '../components/NumberPad/NumberPad';
-import { samplePuzzle } from '../data/samplePuzzle';
-import { getAllConflicts, getCageConflicts, isPuzzleSolved } from '../utils/validation';
+import { getAllConflicts, getBadCages, getCageConflicts, isPuzzleSolved } from '../utils/validation';
 import {
-  getSavedGame,
   saveGame,
-  clearSavedGame,
-  notesToStorage,
-  notesFromStorage,
-  updateStatsOnGameComplete,
-  updateStatsOnGameStart,
-  addToHistory,
+  loadOrStartGame,
+  startNewGame,
+  recordWin,
+  toGameState,
   formatTime,
-  GameRecord,
+  SavedGameState,
 } from '../utils/storage';
+import { gameReducer } from '../lib/game';
+import { getPuzzleById } from '../lib/puzzles';
+import { useGameTimer } from '../hooks/useGameTimer';
 import { useSettings } from '../contexts/SettingsContext';
+import { Difficulty } from '../types/puzzle';
 import styles from './GamePage.module.css';
 
-const PUZZLE_ID = 'sample-puzzle-1'; // For now, single puzzle
-
-// Initialize empty 9x9 grid
-function createEmptyGrid(): (number | null)[][] {
-  return Array(9).fill(null).map(() => Array(9).fill(null));
-}
-
-// Initialize empty 9x9 notes grid
-function createEmptyNotes(): Set<number>[][] {
-  return Array(9).fill(null).map(() => Array(9).fill(null).map(() => new Set<number>()));
-}
+const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
 
 export default function GamePage() {
   const navigate = useNavigate();
-  const { settings } = useSettings();
+  const { settings, updateSettings } = useSettings();
 
-  const [grid, setGrid] = useState<(number | null)[][]>(createEmptyGrid);
-  const [notes, setNotes] = useState<Set<number>[][]>(createEmptyNotes);
+  // Loading is idempotent (it saves the new game it creates), so StrictMode's
+  // double-invoked initializer can't start two games.
+  const [game, setGame] = useState<SavedGameState>(() => loadOrStartGame(settings.lastDifficulty));
+  const puzzle = useMemo(() => getPuzzleById(game.puzzleId)!, [game.puzzleId]);
+  const [state, dispatch] = useReducer(gameReducer, game, toGameState);
   const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
   const [notesMode, setNotesMode] = useState(false);
-  const [solved, setSolved] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
+  const [finalTime, setFinalTime] = useState<number | null>(null);
+  const solved = finalTime !== null;
 
-  const startTimeRef = useRef<number>(Date.now());
-  const baseElapsedRef = useRef<number>(0);
-  const gameInitialized = useRef(false);
+  const timer = useGameTimer(game.elapsedTime, !solved);
 
-  // Load saved game on mount
+  // Persist the game. Runs on every move and every timer tick, so the elapsed
+  // time survives the app being closed at any moment.
+  const persist = useCallback(() => {
+    if (solved) return;
+    saveGame({ ...game, ...state, elapsedTime: timer.getElapsed() });
+  }, [game, state, solved, timer]);
+
+  const persistRef = useRef(persist);
+  persistRef.current = persist;
+
   useEffect(() => {
-    if (gameInitialized.current) return;
-    gameInitialized.current = true;
+    persist();
+  }, [persist, timer.elapsed]);
 
-    const saved = getSavedGame();
-    if (saved && saved.puzzleId === PUZZLE_ID) {
-      setGrid(saved.grid);
-      setNotes(notesFromStorage(saved.notes as unknown as number[][][]));
-      baseElapsedRef.current = saved.elapsedTime;
-      setElapsedTime(saved.elapsedTime);
-    } else {
-      // New game
-      updateStatsOnGameStart();
-    }
-    startTimeRef.current = Date.now();
+  useEffect(() => {
+    const flush = () => persistRef.current();
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', flush);
+    return () => {
+      flush();
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', flush);
+    };
   }, []);
 
-  // Timer
+  // Check for a win
   useEffect(() => {
-    if (solved) return;
+    if (solved || !isPuzzleSolved(state.grid, puzzle)) return;
+    const time = timer.stop();
+    setFinalTime(time);
+    setSelectedCell(null);
+    recordWin(game, time);
+  }, [state.grid, puzzle, solved, game, timer]);
 
-    const interval = setInterval(() => {
-      const sessionTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      setElapsedTime(baseElapsedRef.current + sessionTime);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [solved]);
-
-  // Auto-save game state
-  useEffect(() => {
-    if (solved) return;
-
-    const sessionTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
-    saveGame({
-      grid,
-      notes: notesToStorage(notes) as unknown as number[][],
-      puzzleId: PUZZLE_ID,
-      startTime: startTimeRef.current,
-      elapsedTime: baseElapsedRef.current + sessionTime,
-    });
-  }, [grid, notes, solved]);
-
-  // Compute all conflicts
   const conflicts = useMemo(() => {
     if (!settings.highlightConflicts) return new Set<string>();
-    const sudokuConflicts = getAllConflicts(grid);
-    const cageConflicts = getCageConflicts(grid, samplePuzzle);
-    return new Set([...sudokuConflicts, ...cageConflicts]);
-  }, [grid, settings.highlightConflicts]);
+    return new Set([...getAllConflicts(state.grid), ...getCageConflicts(state.grid, puzzle)]);
+  }, [state.grid, puzzle, settings.highlightConflicts]);
 
-  // Handle cell selection
+  const badCages = useMemo(
+    () => (settings.highlightConflicts ? getBadCages(state.grid, puzzle) : new Set<number>()),
+    [state.grid, puzzle, settings.highlightConflicts],
+  );
+
+  const completedDigits = useMemo(() => {
+    const counts = new Map<number, number>();
+    state.grid.flat().forEach(v => v !== null && counts.set(v, (counts.get(v) ?? 0) + 1));
+    return new Set([...counts].filter(([, n]) => n >= 9).map(([d]) => d));
+  }, [state.grid]);
+
   const handleCellClick = useCallback((row: number, col: number) => {
     setSelectedCell([row, col]);
   }, []);
 
-  // Handle number input
-  const handleNumberInput = useCallback((num: number | null) => {
-    if (selectedCell === null) return;
-
-    const [row, col] = selectedCell;
-
-    if (notesMode) {
-      if (num === null) {
-        setNotes(prev => {
-          const newNotes = prev.map(r => r.map(s => new Set(s)));
-          newNotes[row][col] = new Set();
-          return newNotes;
-        });
+  const handleNumberInput = useCallback(
+    (num: number) => {
+      if (selectedCell === null || solved) return;
+      const [row, col] = selectedCell;
+      if (notesMode) {
+        dispatch({ type: 'toggleNote', row, col, value: num });
       } else {
-        setNotes(prev => {
-          const newNotes = prev.map(r => r.map(s => new Set(s)));
-          const cellNotes = newNotes[row][col];
-          if (cellNotes.has(num)) {
-            cellNotes.delete(num);
-          } else {
-            cellNotes.add(num);
-          }
-          return newNotes;
-        });
+        dispatch({ type: 'setValue', row, col, value: num, puzzle, autoClearNotes: settings.autoClearNotes });
       }
-    } else {
-      setGrid(prev => {
-        const newGrid = prev.map(r => [...r]);
-        newGrid[row][col] = num;
-        return newGrid;
-      });
-      if (num !== null) {
-        setNotes(prev => {
-          const newNotes = prev.map(r => r.map(s => new Set(s)));
-          newNotes[row][col] = new Set();
-          return newNotes;
-        });
-      }
-    }
-  }, [selectedCell, notesMode]);
+    },
+    [selectedCell, notesMode, puzzle, settings.autoClearNotes, solved],
+  );
+
+  const handleErase = useCallback(() => {
+    if (selectedCell === null || solved) return;
+    dispatch({ type: 'erase', row: selectedCell[0], col: selectedCell[1] });
+  }, [selectedCell, solved]);
+
+  const handleUndo = useCallback(() => {
+    if (!solved) dispatch({ type: 'undo' });
+  }, [solved]);
 
   // Keyboard input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
 
+      const key = e.key.toLowerCase();
       if (key === 'n') {
         setNotesMode(prev => !prev);
         return;
       }
 
-      if (selectedCell === null) return;
-
       if (e.key >= '1' && e.key <= '9') {
-        handleNumberInput(parseInt(e.key));
-      } else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') {
-        handleNumberInput(null);
-      } else if (e.key === 'ArrowUp' && selectedCell[0] > 0) {
-        setSelectedCell([selectedCell[0] - 1, selectedCell[1]]);
-      } else if (e.key === 'ArrowDown' && selectedCell[0] < 8) {
-        setSelectedCell([selectedCell[0] + 1, selectedCell[1]]);
-      } else if (e.key === 'ArrowLeft' && selectedCell[1] > 0) {
-        setSelectedCell([selectedCell[0], selectedCell[1] - 1]);
-      } else if (e.key === 'ArrowRight' && selectedCell[1] < 8) {
-        setSelectedCell([selectedCell[0], selectedCell[1] + 1]);
+        handleNumberInput(parseInt(e.key, 10));
+        return;
+      }
+      if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') {
+        handleErase();
+        return;
+      }
+
+      const moves: Record<string, [number, number]> = {
+        ArrowUp: [-1, 0],
+        ArrowDown: [1, 0],
+        ArrowLeft: [0, -1],
+        ArrowRight: [0, 1],
+      };
+      const move = moves[e.key];
+      if (move) {
+        e.preventDefault();
+        setSelectedCell(prev => {
+          if (!prev) return [0, 0];
+          return [Math.min(8, Math.max(0, prev[0] + move[0])), Math.min(8, Math.max(0, prev[1] + move[1]))];
+        });
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedCell, handleNumberInput]);
-
-  // Check for win
-  useEffect(() => {
-    if (isPuzzleSolved(grid, samplePuzzle) && !solved) {
-      setSolved(true);
-
-      // Record completion
-      const finalTime = elapsedTime;
-      updateStatsOnGameComplete(finalTime);
-
-      const record: GameRecord = {
-        id: Date.now().toString(),
-        date: new Date().toISOString(),
-        duration: finalTime,
-        completed: true,
-        puzzleId: PUZZLE_ID,
-      };
-      addToHistory(record);
-      clearSavedGame();
-    }
-  }, [grid, solved, elapsedTime]);
+  }, [handleNumberInput, handleErase, handleUndo]);
 
   const handleReset = () => {
-    setGrid(createEmptyGrid());
-    setNotes(createEmptyNotes());
-    setSolved(false);
+    // Clears the board but keeps the same game (and its timer): undo brings it back.
+    dispatch({ type: 'reset' });
     setSelectedCell(null);
-    setElapsedTime(0);
-    baseElapsedRef.current = 0;
-    startTimeRef.current = Date.now();
-    clearSavedGame();
-    updateStatsOnGameStart();
+  };
+
+  const handleNewPuzzle = (difficulty: Difficulty) => {
+    const next = startNewGame(difficulty);
+    updateSettings({ lastDifficulty: difficulty });
+    setGame(next);
+    dispatch({ type: 'load', state: toGameState(next) });
+    timer.restart(next.elapsedTime);
+    setFinalTime(null);
+    setSelectedCell(null);
+    setNotesMode(false);
   };
 
   return (
@@ -216,22 +183,31 @@ export default function GamePage() {
         </button>
         <div className={styles.headerCenter}>
           <h1 className={styles.title}>Killer Sudoku</h1>
-          {settings.showTimer && (
-            <span className={styles.timer}>{formatTime(elapsedTime)}</span>
-          )}
+          <span className={styles.subtitle}>
+            {DIFFICULTY_LABEL[game.difficulty]}
+            {settings.showTimer && (
+              <>
+                {' · '}
+                <span className={styles.timer}>{formatTime(finalTime ?? timer.elapsed)}</span>
+              </>
+            )}
+          </span>
         </div>
-        <button className={styles.resetButton} onClick={handleReset}>
+        <button className={styles.resetButton} onClick={handleReset} disabled={solved}>
           Reset
         </button>
       </header>
 
       <main className={styles.main}>
         <Grid
-          grid={grid}
-          notes={notes}
-          puzzle={samplePuzzle}
+          grid={state.grid}
+          notes={state.notes}
+          puzzle={puzzle}
           selectedCell={selectedCell}
           conflicts={conflicts}
+          badCages={badCages}
+          highlightRegion={settings.highlightRegion}
+          highlightSameNumbers={settings.highlightSameNumbers}
           onCellClick={handleCellClick}
         />
       </main>
@@ -239,20 +215,35 @@ export default function GamePage() {
       <footer className={styles.footer}>
         <NumberPad
           onNumberClick={handleNumberInput}
+          onErase={handleErase}
+          onUndo={handleUndo}
+          canUndo={state.undoStack.length > 0 && !solved}
           notesMode={notesMode}
           onToggleNotesMode={() => setNotesMode(prev => !prev)}
+          completedDigits={completedDigits}
         />
       </footer>
 
       {solved && (
-        <div className={styles.winOverlay}>
+        <div className={styles.winOverlay} role="dialog" aria-modal="true" aria-labelledby="win-title">
           <div className={styles.winMessage}>
-            <h2>Congratulations!</h2>
-            <p>You solved the puzzle in {formatTime(elapsedTime)}!</p>
-            <button onClick={handleReset}>
-              Play Again
+            <h2 id="win-title">Congratulations!</h2>
+            <p>
+              You solved this {DIFFICULTY_LABEL[game.difficulty].toLowerCase()} puzzle in {formatTime(finalTime)}.
+            </p>
+            <button className={styles.primaryButton} onClick={() => handleNewPuzzle(game.difficulty)}>
+              New {DIFFICULTY_LABEL[game.difficulty]} Puzzle
             </button>
-            <button onClick={() => navigate('/')} className={styles.homeButton}>
+            <div className={styles.winSecondary}>
+              {(['easy', 'medium', 'hard'] as Difficulty[])
+                .filter(d => d !== game.difficulty)
+                .map(d => (
+                  <button key={d} className={styles.secondaryButton} onClick={() => handleNewPuzzle(d)}>
+                    Try {DIFFICULTY_LABEL[d]}
+                  </button>
+                ))}
+            </div>
+            <button className={styles.linkButton} onClick={() => navigate('/')}>
               Home
             </button>
           </div>

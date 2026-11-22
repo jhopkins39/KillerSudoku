@@ -17,7 +17,7 @@
 .title {
   font-size: 20px;
   font-weight: 600;
-  color: #333;
+  color: var(--text);
   margin: 0;
 }
 
@@ -25,14 +25,14 @@
   background: none;
   border: none;
   font-size: 14px;
-  color: #1976d2;
+  color: var(--primary);
   cursor: pointer;
   padding: 8px 12px;
   border-radius: 6px;
 }
 
 .backButton:hover {
-  background: #e3f2fd;
+  background: var(--primary-soft);
 }
 
 .spacer {
@@ -50,7 +50,7 @@
 .sectionTitle {
   font-size: 16px;
   font-weight: 600;
-  color: #666;
+  color: var(--text-muted);
   margin: 0 0 16px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -60,8 +60,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 16px 20px;
   margin-bottom: 12px;
@@ -69,7 +69,7 @@
 }
 
 .option:hover {
-  border-color: #64b5f6;
+  border-color: var(--cage-line);
 }
 
 .optionText {
@@ -81,19 +81,19 @@
 .optionLabel {
   font-size: 16px;
   font-weight: 500;
-  color: #333;
+  color: var(--text);
 }
 
 .optionDescription {
   font-size: 13px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .toggle {
   width: 48px;
   height: 28px;
   appearance: none;
-  background: #ccc;
+  background: var(--border);
   border-radius: 14px;
   position: relative;
   cursor: pointer;
@@ -101,7 +101,7 @@
 }
 
 .toggle:checked {
-  background: #1976d2;
+  background: var(--primary);
 }
 
 .toggle::before {
@@ -111,7 +111,7 @@
   left: 2px;
   width: 24px;
   height: 24px;
-  background: white;
+  background: var(--surface);
   border-radius: 50%;
   transition: transform 0.2s;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -124,10 +124,10 @@
 .dangerButton {
   width: 100%;
   padding: 16px;
-  background: #ffebee;
-  border: 1px solid #ffcdd2;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
   border-radius: 12px;
-  color: #c62828;
+  color: var(--danger);
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
@@ -135,19 +135,19 @@
 }
 
 .dangerButton:hover {
-  background: #ffcdd2;
+  background: var(--danger-border);
 }
 
 .confirmBox {
-  background: #ffebee;
-  border: 1px solid #ffcdd2;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
   border-radius: 12px;
   padding: 16px;
 }
 
 .confirmBox p {
   margin: 0 0 16px 0;
-  color: #c62828;
+  color: var(--danger);
   font-size: 14px;
 }
 
@@ -159,17 +159,17 @@
 .cancelButton {
   flex: 1;
   padding: 12px;
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  color: #333;
+  color: var(--text);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
 }
 
 .cancelButton:hover {
-  background: #f5f5f5;
+  background: var(--surface-hover);
 }
 
 .confirmDeleteButton {

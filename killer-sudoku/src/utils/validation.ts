@@ -155,7 +155,8 @@ export function getAllConflicts(grid: (number | null)[][]): Set<string> {
   return conflicts;
 }
 
-// Check cage constraints: no duplicates within cage, and sum matches when complete
+// Check cage constraints: no duplicates within a cage, no partial sum over the
+// target, and the exact sum once the cage is complete
 export function getCageConflicts(grid: (number | null)[][], puzzle: Puzzle): Set<string> {
   const conflicts = new Set<string>();
 
@@ -194,12 +195,13 @@ export function getCageConflicts(grid: (number | null)[][], puzzle: Puzzle): Set
       }
     }
 
-    // Check sum if cage is complete
-    if (!hasEmpty) {
-      const sum = values.reduce((a, b) => a + b, 0);
-      if (sum !== cage.sum) {
-        cellKeys.forEach(key => conflicts.add(key));
-      }
+    // Flag the cage if the digits so far already exceed the target, or if
+    // it is complete with the wrong total.
+    const sum = values.reduce((a, b) => a + b, 0);
+    if (sum > cage.sum || (!hasEmpty && sum !== cage.sum)) {
+      cage.cells.forEach(([r, c], i) => {
+        if (grid[r][c] !== null) conflicts.add(cellKeys[i]);
+      });
     }
   }
 
@@ -223,4 +225,83 @@ export function isPuzzleSolved(grid: (number | null)[][], puzzle: Puzzle): boole
   if (cageConflicts.size > 0) return false;
 
   return true;
+}
+
+/** Cage ids whose filled cells already exceed the target, or that are full with the wrong sum. */
+export function getBadCages(grid: (number | null)[][], puzzle: Puzzle): Set<number> {
+  const bad = new Set<number>();
+  for (const cage of puzzle.cages) {
+    let sum = 0;
+    let full = true;
+    for (const [r, c] of cage.cells) {
+      const v = grid[r][c];
+      if (v === null) full = false;
+      else sum += v;
+    }
+    if (sum > cage.sum || (full && sum !== cage.sum)) bad.add(cage.id);
+  }
+  return bad;
+}
+
+/** A straight line segment in grid units (one cell = 1). */
+export type Segment = [x1: number, y1: number, x2: number, y2: number];
+
+/**
+ * Computes the dashed outline of every cage, inset from the cell edges by
+ * `inset` (in cell units). Ends are extended or shortened at corners so the
+ * lines meet exactly, including at the inner corner of L-shaped cages.
+ */
+export function getCageOutlines(puzzle: Puzzle, inset = 0.08): Segment[] {
+  const cageMap = buildCageMap(puzzle);
+  const d = inset;
+  const segments: Segment[] = [];
+
+  for (const cage of puzzle.cages) {
+    const id = cage.id;
+    const inCage = (r: number, c: number) => getCageId(cageMap, r, c) === id;
+    const horizontal: Segment[] = [];
+    const vertical: Segment[] = [];
+
+    for (const [r, c] of cage.cells) {
+      // Where a horizontal edge ends at the left/right of this cell.
+      const xStart = (rowDir: number) =>
+        !inCage(r, c - 1) ? c + d : inCage(r + rowDir, c - 1) ? c - d : c;
+      const xEnd = (rowDir: number) =>
+        !inCage(r, c + 1) ? c + 1 - d : inCage(r + rowDir, c + 1) ? c + 1 + d : c + 1;
+      // Where a vertical edge ends at the top/bottom of this cell.
+      const yStart = (colDir: number) =>
+        !inCage(r - 1, c) ? r + d : inCage(r - 1, c + colDir) ? r - d : r;
+      const yEnd = (colDir: number) =>
+        !inCage(r + 1, c) ? r + 1 - d : inCage(r + 1, c + colDir) ? r + 1 + d : r + 1;
+
+      if (!inCage(r - 1, c)) horizontal.push([xStart(-1), r + d, xEnd(-1), r + d]);
+      if (!inCage(r + 1, c)) horizontal.push([xStart(1), r + 1 - d, xEnd(1), r + 1 - d]);
+      if (!inCage(r, c - 1)) vertical.push([c + d, yStart(-1), c + d, yEnd(-1)]);
+      if (!inCage(r, c + 1)) vertical.push([c + 1 - d, yStart(1), c + 1 - d, yEnd(1)]);
+    }
+
+    segments.push(...mergeSegments(horizontal, true), ...mergeSegments(vertical, false));
+  }
+
+  return segments;
+}
+
+const EPS = 1e-9;
+
+/** Joins collinear segments that touch so dash patterns run continuously. */
+function mergeSegments(segs: Segment[], horizontal: boolean): Segment[] {
+  const fixed = horizontal ? 1 : 0; // coordinate shared along the line
+  const start = horizontal ? 0 : 1;
+  const end = horizontal ? 2 : 3;
+  const sorted = [...segs].sort((a, b) => a[fixed] - b[fixed] || a[start] - b[start]);
+  const out: Segment[] = [];
+  for (const s of sorted) {
+    const last = out[out.length - 1];
+    if (last && Math.abs(last[fixed] - s[fixed]) < EPS && Math.abs(last[end] - s[start]) < EPS) {
+      last[end] = s[end];
+    } else {
+      out.push([...s] as Segment);
+    }
+  }
+  return out;
 }

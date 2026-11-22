@@ -17,7 +17,7 @@
 .title {
   font-size: 20px;
   font-weight: 600;
-  color: #333;
+  color: var(--text);
   margin: 0;
 }
 
@@ -25,14 +25,16 @@
   background: none;
   border: none;
   font-size: 14px;
-  color: #1976d2;
+  color: var(--primary);
   cursor: pointer;
   padding: 8px 12px;
   border-radius: 6px;
 }
 
-.backButton:hover {
-  background: #e3f2fd;
+@media (hover: hover) {
+  .backButton:hover {
+    background: var(--primary-soft);
+  }
 }
 
 .spacer {
@@ -50,7 +52,7 @@
 .sectionTitle {
   font-size: 16px;
   font-weight: 600;
-  color: #666;
+  color: var(--text-muted);
   margin: 0 0 16px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -63,8 +65,8 @@
 }
 
 .statCard {
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 20px;
   text-align: center;
@@ -76,18 +78,18 @@
 .statValue {
   font-size: 28px;
   font-weight: 700;
-  color: #1a237e;
+  color: var(--title);
 }
 
 .statLabel {
   font-size: 12px;
-  color: #666;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .emptyState {
-  background: #f5f5f5;
+  background: var(--surface);
   border-radius: 12px;
   padding: 32px;
   text-align: center;
@@ -95,7 +97,7 @@
 
 .emptyState p {
   margin: 0 0 8px 0;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .emptyState p:last-child {
@@ -112,8 +114,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px 16px;
 }
@@ -127,17 +129,67 @@
 .historyDate {
   font-size: 14px;
   font-weight: 500;
-  color: #333;
+  color: var(--text);
 }
 
-.historyStatus {
+.statusSolved,
+.statusAbandoned {
   font-size: 12px;
-  color: #2e7d32;
+}
+
+.statusSolved {
+  color: var(--success);
+}
+
+.statusAbandoned {
+  color: var(--text-muted);
+}
+
+.table {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tableRow {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 1fr;
+  padding: 12px 16px;
+  font-size: 15px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  border-top: 1px solid var(--border);
+}
+
+.tableRow span:not(:first-child) {
+  text-align: right;
+}
+
+.tableHead {
+  border-top: none;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.tableLabel {
+  font-weight: 600;
+}
+
+.moreButton {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 14px;
+  padding: 12px;
+  cursor: pointer;
 }
 
 .historyTime {
   font-size: 16px;
   font-weight: 600;
-  color: #1a237e;
+  color: var(--title);
   font-variant-numeric: tabular-nums;
 }

@@ -1,5 +1,6 @@
 import { Difficulty } from '../types/puzzle';
-import { GeneratedPuzzle, layoutToCages } from './generator';
+import type { GeneratedPuzzle } from './generator';
+import { layoutToCages } from './layout';
 
 /**
  * Compact on-disk form of a puzzle: the cage layout as 81 base-62 characters

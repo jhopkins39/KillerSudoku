@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Settings, getSettings, saveSettings } from '../utils/storage';
 
 interface SettingsContextType {
@@ -16,9 +16,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     saveSettings(settings);
   }, [settings]);
 
-  const updateSettings = (updates: Partial<Settings>) => {
+  // Apply the theme to the whole document, including the browser chrome color.
+  useEffect(() => {
+    const theme = settings.darkMode ? 'dark' : 'light';
+    document.documentElement.dataset.theme = theme;
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', settings.darkMode ? '#121418' : '#1a237e');
+  }, [settings.darkMode]);
+
+  const updateSettings = useCallback((updates: Partial<Settings>) => {
     setSettings(prev => ({ ...prev, ...updates }));
-  };
+  }, []);
 
   return (
     <SettingsContext.Provider value={{ settings, updateSettings }}>

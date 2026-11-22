@@ -1,32 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  getStats,
-  getHistory,
-  formatTime,
-  formatDate,
-  GameStats,
-  GameRecord,
-} from '../utils/storage';
+import { getStats, getHistory, formatTime, formatDate } from '../utils/storage';
+import { DIFFICULTIES, Difficulty } from '../types/puzzle';
 import styles from './StatsPage.module.css';
+
+const LABEL: Record<Difficulty, string> = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+const PAGE = 50;
 
 export default function StatsPage() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<GameStats | null>(null);
-  const [history, setHistory] = useState<GameRecord[]>([]);
-
-  useEffect(() => {
-    setStats(getStats());
-    setHistory(getHistory());
-  }, []);
-
-  const averageTime = stats && stats.puzzlesSolved > 0
-    ? Math.round(stats.totalTime / stats.puzzlesSolved)
-    : null;
-
-  const winRate = stats && stats.puzzlesStarted > 0
-    ? Math.round((stats.puzzlesSolved / stats.puzzlesStarted) * 100)
-    : 0;
+  const [stats] = useState(getStats);
+  const [history] = useState(getHistory);
+  const [shown, setShown] = useState(PAGE);
 
   return (
     <div className={styles.container}>
@@ -43,25 +28,44 @@ export default function StatsPage() {
           <h2 className={styles.sectionTitle}>Statistics</h2>
           <div className={styles.statsGrid}>
             <div className={styles.statCard}>
-              <span className={styles.statValue}>{stats?.puzzlesSolved ?? 0}</span>
-              <span className={styles.statLabel}>Puzzles Solved</span>
+              <span className={styles.statValue}>{stats.puzzlesSolved}</span>
+              <span className={styles.statLabel}>Solved</span>
             </div>
             <div className={styles.statCard}>
-              <span className={styles.statValue}>
-                {stats?.bestTime ? formatTime(stats.bestTime) : '--:--'}
-              </span>
-              <span className={styles.statLabel}>Best Time</span>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statValue}>
-                {averageTime ? formatTime(averageTime) : '--:--'}
-              </span>
-              <span className={styles.statLabel}>Average Time</span>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statValue}>{winRate}%</span>
+              <span className={styles.statValue}>{stats.winRate === null ? '--' : `${stats.winRate}%`}</span>
               <span className={styles.statLabel}>Win Rate</span>
             </div>
+            <div className={styles.statCard}>
+              <span className={styles.statValue}>{stats.puzzlesStarted}</span>
+              <span className={styles.statLabel}>Started</span>
+            </div>
+            <div className={styles.statCard}>
+              <span className={styles.statValue}>{stats.puzzlesAbandoned}</span>
+              <span className={styles.statLabel}>Abandoned</span>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Times</h2>
+          <div className={styles.table}>
+            <div className={`${styles.tableRow} ${styles.tableHead}`}>
+              <span />
+              <span>Solved</span>
+              <span>Best</span>
+              <span>Average</span>
+            </div>
+            {DIFFICULTIES.map(d => {
+              const s = stats.byDifficulty[d];
+              return (
+                <div key={d} className={styles.tableRow}>
+                  <span className={styles.tableLabel}>{LABEL[d]}</span>
+                  <span>{s.solved}</span>
+                  <span>{s.bestTime === null ? '--:--' : formatTime(s.bestTime)}</span>
+                  <span>{s.averageTime === null ? '--:--' : formatTime(s.averageTime)}</span>
+                </div>
+              );
+            })}
           </div>
         </section>
 
@@ -69,22 +73,28 @@ export default function StatsPage() {
           <h2 className={styles.sectionTitle}>Recent Games</h2>
           {history.length === 0 ? (
             <div className={styles.emptyState}>
-              <p>No games played yet.</p>
-              <p>Start a new puzzle to track your progress!</p>
+              <p>No games finished yet.</p>
+              <p>Solve a puzzle to start tracking your progress!</p>
             </div>
           ) : (
             <div className={styles.historyList}>
-              {history.map(game => (
+              {history.slice(0, shown).map(game => (
                 <div key={game.id} className={styles.historyItem}>
                   <div className={styles.historyInfo}>
                     <span className={styles.historyDate}>{formatDate(game.date)}</span>
-                    <span className={styles.historyStatus}>
-                      {game.completed ? 'Completed' : 'Abandoned'}
+                    <span className={game.completed ? styles.statusSolved : styles.statusAbandoned}>
+                      {game.completed ? 'Solved' : 'Abandoned'}
+                      {game.difficulty ? ` · ${LABEL[game.difficulty]}` : ''}
                     </span>
                   </div>
                   <span className={styles.historyTime}>{formatTime(game.duration)}</span>
                 </div>
               ))}
+              {history.length > shown && (
+                <button className={styles.moreButton} onClick={() => setShown(n => n + PAGE)}>
+                  Show more
+                </button>
+              )}
             </div>
           )}
         </section>
