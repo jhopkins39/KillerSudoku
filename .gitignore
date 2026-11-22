@@ -1,0 +1,15 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies and build output
+node_modules/
+dist/
+dev-dist/
+coverage/
+
+# Env / deploy
+.env
+.env.local
+.vercel
+*.log

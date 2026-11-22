@@ -1,3 +1,6 @@
+// Regenerates the PWA icons in public/. Requires the optional `canvas` package,
+// which is intentionally not a dependency (it is a slow native build on Vercel).
+// Run with: npm run icons
 const { createCanvas } = require('canvas');
 const fs = require('fs');
 const path = require('path');

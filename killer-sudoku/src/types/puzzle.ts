@@ -1,3 +1,7 @@
+export type Difficulty = 'easy' | 'medium' | 'hard';
+
+export const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
+
 export interface Cage {
   id: number;
   sum: number;
@@ -5,6 +9,8 @@ export interface Cage {
 }
 
 export interface Puzzle {
+  id?: string;
+  difficulty?: Difficulty;
   cages: Cage[];
   solution?: number[][]; // Optional 9x9 solution grid
 }
